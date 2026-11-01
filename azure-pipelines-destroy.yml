@@ -1,0 +1,47 @@
+# =============================================================================
+# atlas-03-helm-deployment — Destroy Pipeline
+# Manual trigger only. Tears down everything. Zero overnight cost.
+#
+# Order:
+#   1. terraform destroy (needs state → backend must still exist)
+#   2. Delete backend RG (state no longer needed)
+#   3. Verify both RGs are gone
+# =============================================================================
+
+trigger: none
+
+variables:
+  - group: atlas-03-vars
+  - name: projectRG
+    value: rg-atlas-03-dev
+
+stages:
+  - stage: Destroy
+    displayName: 'Destroy All Resources'
+    jobs:
+      - deployment: TearDown
+        displayName: 'Terraform Destroy + Cleanup'
+        environment: atlas-03-destroy
+        pool:
+          vmImage: ubuntu-latest
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: AzureCLI@2
+                  displayName: 'Run destroy.ps1'
+                  inputs:
+                    azureSubscription: $(serviceConnection)
+                    scriptType: pscore
+                    scriptPath: $(Build.SourcesDirectory)/scripts/destroy.ps1
+                    arguments: >-
+                      -TerraformDir "$(Build.SourcesDirectory)/terraform"
+                      -VarFile "$(Build.SourcesDirectory)/terraform/dev.tfvars"
+                      -BackendRG "$(backendResourceGroup)"
+                      -BackendSA "$(backendStorageAccount)"
+                      -BackendContainer "$(backendContainer)"
+                      -BackendKey "$(backendKey)"
+                      -ProjectRG "$(projectRG)"
+                    addSpnToEnvironment: true

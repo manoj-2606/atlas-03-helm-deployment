@@ -1,0 +1,175 @@
+# =============================================================================
+# atlas-03-helm-deployment — Deploy Pipeline
+# Pattern: YAML orchestrator + PowerShell engines
+#
+# Stages:
+#   1. Bootstrap  → backend storage (idempotent)
+#   2. Infra      → AKS + ACR via atlas-infra-base module
+#   3. Build      → Docker build + Trivy scan + ACR push
+#   4. Deploy     → Helm install + rollout wait + smoke test
+#
+# Multi-repo: atlas-platform-app source pulled at runtime.
+#   Project repo owns: Dockerfile, Helm chart, Terraform, scripts, pipeline.
+#   App repo owns: Python source only.
+# =============================================================================
+
+trigger: none
+
+resources:
+  repositories:
+    - repository: app
+      type: git
+      name: Atlas-Platform/atlas-platform-app
+      ref: refs/heads/main
+
+variables:
+  - group: atlas-03-vars
+  # --- Paths (multi-repo checkout creates subfolders) ---
+  - name: projectDir
+    value: $(Build.SourcesDirectory)/atlas-03-helm-deployment
+  - name: appDir
+    value: $(Build.SourcesDirectory)/atlas-platform-app
+  - name: tfDir
+    value: $(Build.SourcesDirectory)/atlas-03-helm-deployment/terraform
+  - name: scriptsDir
+    value: $(Build.SourcesDirectory)/atlas-03-helm-deployment/scripts
+  - name: chartPath
+    value: $(Build.SourcesDirectory)/atlas-03-helm-deployment/charts/atlas-platform
+  - name: valuesFile
+    value: $(Build.SourcesDirectory)/atlas-03-helm-deployment/charts/atlas-platform/values-dev.yaml
+  # --- Deploy config ---
+  - name: releaseName
+    value: atlas-platform-app
+  - name: namespace
+    value: atlas
+  - name: imageTag
+    value: $(Build.BuildNumber)
+
+# =============================================================================
+# Stage 1: Bootstrap — Create backend storage
+# =============================================================================
+stages:
+  - stage: Bootstrap
+    displayName: '1 - Bootstrap Backend Storage'
+    jobs:
+      - job: CreateStorage
+        displayName: 'Create TF Backend'
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+          - checkout: app
+
+          - task: AzureCLI@2
+            displayName: 'Run bootstrap.ps1'
+            inputs:
+              azureSubscription: $(serviceConnection)
+              scriptType: pscore
+              scriptPath: $(scriptsDir)/bootstrap.ps1
+              arguments: >-
+                -ResourceGroup "$(backendResourceGroup)"
+                -StorageAccount "$(backendStorageAccount)"
+                -Container "$(backendContainer)"
+                -Location "$(location)"
+              addSpnToEnvironment: true
+
+# =============================================================================
+# Stage 2: Infra — Terraform apply (AKS + ACR + VNet)
+# =============================================================================
+  - stage: Infra
+    displayName: '2 - Provision Infrastructure'
+    dependsOn: Bootstrap
+    jobs:
+      - job: TerraformApply
+        displayName: 'Terraform Apply'
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+          - checkout: app
+
+          - task: AzureCLI@2
+            displayName: 'Run infra.ps1 (apply)'
+            inputs:
+              azureSubscription: $(serviceConnection)
+              scriptType: pscore
+              scriptPath: $(scriptsDir)/infra.ps1
+              arguments: >-
+                -Action "apply"
+                -TerraformDir "$(tfDir)"
+                -VarFile "$(tfDir)/dev.tfvars"
+                -BackendRG "$(backendResourceGroup)"
+                -BackendSA "$(backendStorageAccount)"
+                -BackendContainer "$(backendContainer)"
+                -BackendKey "$(backendKey)"
+              addSpnToEnvironment: true
+
+# =============================================================================
+# Stage 3: Build — Docker build + Trivy scan + Push to ACR
+# =============================================================================
+  - stage: Build
+    displayName: '3 - Build + Scan + Push'
+    dependsOn: Infra
+    jobs:
+      - job: DockerBuildPush
+        displayName: 'Docker Build → Trivy → ACR'
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+          - checkout: app
+
+          - task: AzureCLI@2
+            displayName: 'Run build.ps1'
+            inputs:
+              azureSubscription: $(serviceConnection)
+              scriptType: pscore
+              scriptPath: $(scriptsDir)/build.ps1
+              arguments: >-
+                -TerraformDir "$(tfDir)"
+                -BackendRG "$(backendResourceGroup)"
+                -BackendSA "$(backendStorageAccount)"
+                -BackendContainer "$(backendContainer)"
+                -BackendKey "$(backendKey)"
+                -DockerfilePath "$(projectDir)/Dockerfile"
+                -BuildContext "$(appDir)"
+                -ImageTag "$(imageTag)"
+              addSpnToEnvironment: true
+
+# =============================================================================
+# Stage 4: Deploy — Helm install + Smoke test
+# =============================================================================
+  - stage: Deploy
+    displayName: '4 - Deploy to AKS'
+    dependsOn: Build
+    jobs:
+      - deployment: HelmDeploy
+        displayName: 'Helm Deploy + Smoke Test'
+        environment: atlas-03-deploy
+        pool:
+          vmImage: ubuntu-latest
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - checkout: app
+
+                - task: AzureCLI@2
+                  displayName: 'Run deploy.ps1'
+                  inputs:
+                    azureSubscription: $(serviceConnection)
+                    scriptType: pscore
+                    scriptPath: $(scriptsDir)/deploy.ps1
+                    arguments: >-
+                      -TerraformDir "$(tfDir)"
+                      -BackendRG "$(backendResourceGroup)"
+                      -BackendSA "$(backendStorageAccount)"
+                      -BackendContainer "$(backendContainer)"
+                      -BackendKey "$(backendKey)"
+                      -ChartPath "$(chartPath)"
+                      -ValuesFile "$(valuesFile)"
+                      -ReleaseName "$(releaseName)"
+                      -Namespace "$(namespace)"
+                      -ImageTag "$(imageTag)"
+                    addSpnToEnvironment: true
