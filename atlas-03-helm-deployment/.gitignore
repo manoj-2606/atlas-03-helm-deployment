@@ -1,0 +1,29 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+*.tfplan
+
+# Do NOT ignore .tfvars — dev.tfvars is committed intentionally
+# Secrets go in variable groups, not tfvars files
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Python (if testing locally)
+__pycache__/
+*.pyc
+*.pyo
+.env
+.venv/
+
+# Docker
+*.log
+
+# Trivy reports (generated in pipeline, not committed)
+trivy-report.json
+sbom.json
