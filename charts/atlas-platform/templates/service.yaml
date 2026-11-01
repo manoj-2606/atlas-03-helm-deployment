@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "atlas-platform.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "atlas-platform.labels" . | nindent 4 }}
+spec:
+  # ClusterIP = internal only. No external load balancer.
+  # Access from outside: kubectl port-forward or Ingress (P10).
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+      name: http
+  # Selector must match pod labels — this is how the Service finds its pods
+  selector:
+    {{- include "atlas-platform.selectorLabels" . | nindent 4 }}

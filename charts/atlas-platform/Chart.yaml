@@ -1,0 +1,6 @@
+apiVersion: v2
+name: atlas-platform
+description: Helm chart for atlas-platform-app — FastAPI workload for platform engineering projects
+type: application
+version: 0.1.0       # Chart version — bump when you change the chart itself
+appVersion: "1.0.0"   # App version — matches the app release, shown in /info endpoint

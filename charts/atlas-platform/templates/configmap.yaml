@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "atlas-platform.fullname" . }}-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "atlas-platform.labels" . | nindent 4 }}
+data:
+  # Non-sensitive application configuration
+  # The app reads these via os.environ (set as env vars in deployment.yaml)
+  APP_ENV: {{ .Values.config.appEnv | quote }}
+  APP_VERSION: {{ .Values.config.appVersion | quote }}

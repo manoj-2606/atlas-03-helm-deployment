@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "atlas-platform.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "atlas-platform.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.hpa.enabled }}
+  # When HPA is disabled, Deployment controls replica count directly.
+  # When HPA is enabled, HPA overrides this — so we omit it to avoid conflict.
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "atlas-platform.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "atlas-platform.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        # Force rolling update when ConfigMap changes
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      # Security: don't auto-mount the service account token unless needed
+      automountServiceAccountToken: false
+      containers:
+        - name: {{ include "atlas-platform.name" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          # -- Environment variables from ConfigMap
+          envFrom:
+            - configMapRef:
+                name: {{ include "atlas-platform.fullname" . }}-config
+          # -- Liveness probe: is the container alive?
+          # Failure → K8s kills and restarts the pod
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: {{ .Values.probes.liveness.port }}
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          # -- Readiness probe: can it serve traffic?
+          # Failure → pod removed from Service endpoints (no traffic routed)
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: {{ .Values.probes.readiness.port }}
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          # -- Resource management
+          # Requests = guaranteed. Limits = ceiling.
+          # Without resources → BestEffort QoS → first evicted under memory pressure
+          resources:
+            requests:
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.limits.memory }}
+          # Security context at container level
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 1000

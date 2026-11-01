@@ -1,0 +1,39 @@
+# =============================================================================
+# Dev environment overrides
+# Layered on top of values.yaml: helm install -f values.yaml -f values-dev.yaml
+# Only values that DIFFER from defaults are listed here.
+# =============================================================================
+
+replicaCount: 1
+
+# -- Lower resource allocation for single-node dev cluster
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 150m
+    memory: 128Mi
+
+# -- HPA disabled in dev (single B2s node, no scaling headroom)
+hpa:
+  enabled: false
+
+# -- Dev environment config
+config:
+  appEnv: "dev"
+
+# -- Probe tuning for dev (faster feedback during testing)
+probes:
+  liveness:
+    path: /health
+    port: 8000
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 3
+  readiness:
+    path: /health
+    port: 8000
+    initialDelaySeconds: 3
+    periodSeconds: 5
+    failureThreshold: 3

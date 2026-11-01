@@ -1,0 +1,27 @@
+{{- if .Values.hpa.enabled }}
+# HPA scales pods based on CPU utilization.
+# Disabled in dev (single B2s node has no scaling headroom).
+# Enabled in prod (values.yaml defaults).
+# Test with: POST /simulate/load?duration=60&intensity=high
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "atlas-platform.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "atlas-platform.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "atlas-platform.fullname" . }}
+  minReplicas: {{ .Values.hpa.minReplicas }}
+  maxReplicas: {{ .Values.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.targetCPUUtilization }}
+{{- end }}

@@ -1,0 +1,76 @@
+# =============================================================================
+# Default values for atlas-platform chart
+# These are production-grade defaults. Dev overrides go in values-dev.yaml.
+#
+# Usage:
+#   helm upgrade --install atlas-platform ./charts/atlas-platform \
+#     -f charts/atlas-platform/values-dev.yaml \
+#     --set image.repository=acratlas03dev.azurecr.io/atlas-platform-app \
+#     --set image.tag=20261101.1
+# =============================================================================
+
+# -- Replica count (overridden by HPA when enabled)
+replicaCount: 2
+
+# -- Container image
+image:
+  # Set at deploy time: --set image.repository=/atlas-platform-app
+  repository: ""
+  # Set at deploy time: --set image.tag=
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# -- Service configuration
+service:
+  type: ClusterIP
+  port: 80           # Port the Service listens on
+  targetPort: 8000    # Port the container listens on (uvicorn)
+
+# -- Resource requests and limits
+# Requests = guaranteed allocation. Limits = hard ceiling.
+# Without these, K8s assigns BestEffort QoS — first to be evicted under pressure.
+resources:
+  requests:
+    cpu: 100m         # 0.1 CPU core guaranteed
+    memory: 128Mi     # 128MB guaranteed
+  limits:
+    cpu: 250m         # Cannot exceed 0.25 CPU core
+    memory: 256Mi     # Exceeding this → OOMKilled
+
+# -- Liveness and readiness probes
+# Liveness: "Is the container alive?" Fail → K8s restarts the pod.
+# Readiness: "Can it serve traffic?" Fail → removed from Service endpoints.
+probes:
+  liveness:
+    path: /health
+    port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 15
+    failureThreshold: 3
+  readiness:
+    path: /health
+    port: 8000
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 3
+
+# -- Horizontal Pod Autoscaler
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilization: 70
+
+# -- Application configuration (injected via ConfigMap)
+config:
+  appEnv: "prod"
+  appVersion: "1.0.0"
+
+# -- Pod labels (in addition to chart defaults)
+# Kyverno (P8) will enforce these exist on every pod.
+podLabels:
+  team: "atlas"
+  cost-center: "atlas-platform"
+
+# -- Namespace
+namespace: atlas
