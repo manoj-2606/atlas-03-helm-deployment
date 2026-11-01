@@ -1,19 +1,12 @@
 # =============================================================================
 # atlas-03-helm-deployment — Deploy Pipeline
-# Pattern: YAML orchestrator + PowerShell engines
-#
-# Stages:
-#   1. Bootstrap  → backend storage (idempotent)
-#   2. Infra      → AKS + ACR via atlas-infra-base module
-#   3. Build      → Docker build + Trivy scan + ACR push
-#   4. Deploy     → Helm install + rollout wait + smoke test
-#
-# Multi-repo: atlas-platform-app source pulled at runtime.
-#   Project repo owns: Dockerfile, Helm chart, Terraform, scripts, pipeline.
-#   App repo owns: Python source only.
+# Pattern: YAML orchestrator + PowerShell engines + automated error logging
 # =============================================================================
 
-trigger: none
+trigger:
+  branches:
+    include:
+      - main
 
 resources:
   repositories:
@@ -24,7 +17,6 @@ resources:
 
 variables:
   - group: atlas-03-vars
-  # --- Paths (multi-repo checkout creates subfolders) ---
   - name: projectDir
     value: $(Build.SourcesDirectory)/atlas-03-helm-deployment
   - name: appDir
@@ -37,7 +29,6 @@ variables:
     value: $(Build.SourcesDirectory)/atlas-03-helm-deployment/charts/atlas-platform
   - name: valuesFile
     value: $(Build.SourcesDirectory)/atlas-03-helm-deployment/charts/atlas-platform/values-dev.yaml
-  # --- Deploy config ---
   - name: releaseName
     value: atlas-platform-app
   - name: namespace
@@ -46,7 +37,7 @@ variables:
     value: $(Build.BuildNumber)
 
 # =============================================================================
-# Stage 1: Bootstrap — Create backend storage
+# Stage 1: Bootstrap
 # =============================================================================
 stages:
   - stage: Bootstrap
@@ -58,6 +49,7 @@ stages:
           vmImage: ubuntu-latest
         steps:
           - checkout: self
+            persistCredentials: true
           - checkout: app
 
           - task: AzureCLI@2
@@ -73,8 +65,19 @@ stages:
                 -Location "$(location)"
               addSpnToEnvironment: true
 
+          - task: PowerShell@2
+            displayName: 'Log Error (if failed)'
+            condition: failed()
+            inputs:
+              targetType: filePath
+              filePath: $(scriptsDir)/log-error.ps1
+              arguments: >-
+                -Stage "Bootstrap"
+                -BuildNumber "$(Build.BuildNumber)"
+                -RepoDir "$(projectDir)"
+
 # =============================================================================
-# Stage 2: Infra — Terraform apply (AKS + ACR + VNet)
+# Stage 2: Infra
 # =============================================================================
   - stage: Infra
     displayName: '2 - Provision Infrastructure'
@@ -86,6 +89,7 @@ stages:
           vmImage: ubuntu-latest
         steps:
           - checkout: self
+            persistCredentials: true
           - checkout: app
 
           - task: AzureCLI@2
@@ -104,8 +108,19 @@ stages:
                 -BackendKey "$(backendKey)"
               addSpnToEnvironment: true
 
+          - task: PowerShell@2
+            displayName: 'Log Error (if failed)'
+            condition: failed()
+            inputs:
+              targetType: filePath
+              filePath: $(scriptsDir)/log-error.ps1
+              arguments: >-
+                -Stage "Infra"
+                -BuildNumber "$(Build.BuildNumber)"
+                -RepoDir "$(projectDir)"
+
 # =============================================================================
-# Stage 3: Build — Docker build + Trivy scan + Push to ACR
+# Stage 3: Build
 # =============================================================================
   - stage: Build
     displayName: '3 - Build + Scan + Push'
@@ -117,6 +132,7 @@ stages:
           vmImage: ubuntu-latest
         steps:
           - checkout: self
+            persistCredentials: true
           - checkout: app
 
           - task: AzureCLI@2
@@ -136,8 +152,19 @@ stages:
                 -ImageTag "$(imageTag)"
               addSpnToEnvironment: true
 
+          - task: PowerShell@2
+            displayName: 'Log Error (if failed)'
+            condition: failed()
+            inputs:
+              targetType: filePath
+              filePath: $(scriptsDir)/log-error.ps1
+              arguments: >-
+                -Stage "Build"
+                -BuildNumber "$(Build.BuildNumber)"
+                -RepoDir "$(projectDir)"
+
 # =============================================================================
-# Stage 4: Deploy — Helm install + Smoke test
+# Stage 4: Deploy
 # =============================================================================
   - stage: Deploy
     displayName: '4 - Deploy to AKS'
@@ -153,6 +180,7 @@ stages:
             deploy:
               steps:
                 - checkout: self
+                  persistCredentials: true
                 - checkout: app
 
                 - task: AzureCLI@2
@@ -173,3 +201,14 @@ stages:
                       -Namespace "$(namespace)"
                       -ImageTag "$(imageTag)"
                     addSpnToEnvironment: true
+
+                - task: PowerShell@2
+                  displayName: 'Log Error (if failed)'
+                  condition: failed()
+                  inputs:
+                    targetType: filePath
+                    filePath: $(scriptsDir)/log-error.ps1
+                    arguments: >-
+                      -Stage "Deploy"
+                      -BuildNumber "$(Build.BuildNumber)"
+                      -RepoDir "$(projectDir)"

@@ -1,11 +1,5 @@
 # =============================================================================
 # atlas-03-helm-deployment — Destroy Pipeline
-# Manual trigger only. Tears down everything. Zero overnight cost.
-#
-# Order:
-#   1. terraform destroy (needs state → backend must still exist)
-#   2. Delete backend RG (state no longer needed)
-#   3. Verify both RGs are gone
 # =============================================================================
 
 trigger: none
@@ -29,6 +23,7 @@ stages:
             deploy:
               steps:
                 - checkout: self
+                  persistCredentials: true
 
                 - task: AzureCLI@2
                   displayName: 'Run destroy.ps1'
@@ -45,3 +40,14 @@ stages:
                       -BackendKey "$(backendKey)"
                       -ProjectRG "$(projectRG)"
                     addSpnToEnvironment: true
+
+                - task: PowerShell@2
+                  displayName: 'Log Error (if failed)'
+                  condition: failed()
+                  inputs:
+                    targetType: filePath
+                    filePath: $(Build.SourcesDirectory)/scripts/log-error.ps1
+                    arguments: >-
+                      -Stage "Destroy"
+                      -BuildNumber "$(Build.BuildNumber)"
+                      -RepoDir "$(Build.SourcesDirectory)"
