@@ -36,5 +36,5 @@ variable "aks_node_size" {
 variable "kubernetes_version" {
   description = "Kubernetes version for AKS — check: az aks get-versions --location centralindia"
   type        = string
-  default     = "1.30"
+  default     = "1.34"
 }
