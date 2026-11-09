@@ -121,7 +121,6 @@ stages:
 # =============================================================================
   - stage: Build
     displayName: '3 - Build + Scan + Push'
-    dependsOn: Infra
     jobs:
       - job: DockerBuildPush
         displayName: 'Docker Build → Trivy → ACR'
