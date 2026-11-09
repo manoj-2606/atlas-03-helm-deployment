@@ -30,6 +30,16 @@
       "cause": "TODO",
       "fix": "TODO",
       "prevention": "TODO"
+    },
+    {
+      "run": "#20261109.5",
+      "stage": "Infra",
+      "error": "Terraform apply failed: │ Error: creating Kubernetes Cluster (Subscription: \"4985f681-bfb3-4e92-a131-b1e85dd4f934\"",
+      "scriptLine": 81,
+      "timestamp": "2026-11-09T13:06:31Z",
+      "cause": "TODO",
+      "fix": "TODO",
+      "prevention": "TODO"
     }
   ]
 }
