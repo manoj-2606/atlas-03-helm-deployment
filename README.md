@@ -57,6 +57,38 @@ Deploy a production-grade FastAPI application to AKS using a custom Helm chart �
 
 ---
 
+## Evidence
+
+**Pipeline — all 4 stages passed (Bootstrap → Infra → Build → Deploy):**
+
+![Pipeline stages](docs/pipeline-stages.png)
+
+**Terraform outputs — AKS cluster, ACR, VNet provisioned in centralindia:**
+
+![Terraform outputs](docs/terraform-outputs.png)
+
+**Azure resources — AKS running on K8s 1.34.12, Free tier, 1 node pool:**
+
+![Azure resources](docs/azure-resources.png)
+
+**Trivy scan — zero CRITICAL CVEs, image allowed to proceed:**
+
+![Trivy scan](docs/trivy-scan.png)
+
+**Helm release — atlas-platform-app deployed to namespace `atlas`, 1/1 ready:**
+
+![Helm release](docs/helm-release.png)
+
+**Smoke test — /health endpoint returning 200 with version 1.0.0:**
+
+![Smoke test](docs/smoke-test.png)
+
+**Destroy — full teardown completed, both RGs deleted:**
+
+![Destroy complete](docs/destroy-complete.png)
+
+---
+
 ## What is Helm?
 
 Helm is a **package manager for Kubernetes** — the same concept as apt for Linux or pip for Python, but for K8s resources.
