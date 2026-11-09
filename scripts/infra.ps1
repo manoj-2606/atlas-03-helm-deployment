@@ -52,6 +52,8 @@ try {
     if ($LASTEXITCODE -ne 0) { Pop-Location; throw "Terraform init failed" }
     Write-Host "  -> OK" -ForegroundColor Green
 
+    Write-Host "VarFile: $VarFile" -ForegroundColor Yellow
+    Write-Host "Exists: $(Test-Path $VarFile)" -ForegroundColor Yellow
     # --- Terraform Plan/Apply ---
     Write-Host "[4/4] Terraform $Action..."
     if ($Action -eq "plan") {
