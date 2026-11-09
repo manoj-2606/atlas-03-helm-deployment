@@ -3,10 +3,7 @@
 # Pattern: YAML orchestrator + PowerShell engines + automated error logging
 # =============================================================================
 
-trigger:
-  branches:
-    include:
-      - main
+trigger: none
 
 resources:
   repositories:
