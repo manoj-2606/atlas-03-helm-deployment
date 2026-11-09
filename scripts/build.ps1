@@ -61,20 +61,13 @@ try {
 
     # --- Install Trivy ---
     Write-Host "[4/6] Installing Trivy..."
-    $trivyVersion = "0.57.1"
-    curl -sLo /tmp/trivy.deb "https://github.com/aquasecurity/trivy/releases/download/v${trivyVersion}/trivy_${trivyVersion}_Linux-64bit.deb"
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "  Direct download failed, trying apt..." -ForegroundColor Yellow
-        sudo apt-get update -qq
-        sudo apt-get install -y -qq wget apt-transport-https gnupg lsb-release
-        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > $null
-        echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
-        sudo apt-get update -qq
-        sudo apt-get install -y -qq trivy
-    } else {
-        sudo dpkg -i /tmp/trivy.deb
-        rm /tmp/trivy.deb
-    }
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq wget apt-transport-https gnupg lsb-release
+    wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+    echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq trivy
+    if ($LASTEXITCODE -ne 0) { throw "Trivy installation failed" }
     Write-Host "  -> $(trivy version | Select-Object -First 1)" -ForegroundColor Green
 
     # --- Trivy Scan ---

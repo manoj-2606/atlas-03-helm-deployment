@@ -33,88 +33,88 @@ variables:
   - name: imageTag
     value: $(Build.BuildNumber)
 
-# =============================================================================
-# Stage 1: Bootstrap
-# =============================================================================
-stages:
-  - stage: Bootstrap
-    displayName: '1 - Bootstrap Backend Storage'
-    jobs:
-      - job: CreateStorage
-        displayName: 'Create TF Backend'
-        pool:
-          vmImage: ubuntu-latest
-        steps:
-          - checkout: self
-            persistCredentials: true
-          - checkout: app
+# # =============================================================================
+# # Stage 1: Bootstrap
+# # =============================================================================
+# stages:
+#   - stage: Bootstrap
+#     displayName: '1 - Bootstrap Backend Storage'
+#     jobs:
+#       - job: CreateStorage
+#         displayName: 'Create TF Backend'
+#         pool:
+#           vmImage: ubuntu-latest
+#         steps:
+#           - checkout: self
+#             persistCredentials: true
+#           - checkout: app
 
-          - task: AzureCLI@2
-            displayName: 'Run bootstrap.ps1'
-            inputs:
-              azureSubscription: $(serviceConnection)
-              scriptType: pscore
-              scriptPath: $(scriptsDir)/bootstrap.ps1
-              arguments: >-
-                -ResourceGroup "$(backendResourceGroup)"
-                -StorageAccount "$(backendStorageAccount)"
-                -Container "$(backendContainer)"
-                -Location "$(location)"
-              addSpnToEnvironment: true
+#           - task: AzureCLI@2
+#             displayName: 'Run bootstrap.ps1'
+#             inputs:
+#               azureSubscription: $(serviceConnection)
+#               scriptType: pscore
+#               scriptPath: $(scriptsDir)/bootstrap.ps1
+#               arguments: >-
+#                 -ResourceGroup "$(backendResourceGroup)"
+#                 -StorageAccount "$(backendStorageAccount)"
+#                 -Container "$(backendContainer)"
+#                 -Location "$(location)"
+#               addSpnToEnvironment: true
 
-          - task: PowerShell@2
-            displayName: 'Log Error (if failed)'
-            condition: failed()
-            inputs:
-              targetType: filePath
-              filePath: $(scriptsDir)/log-error.ps1
-              arguments: >-
-                -Stage "Bootstrap"
-                -BuildNumber "$(Build.BuildNumber)"
-                -RepoDir "$(projectDir)"
+#           - task: PowerShell@2
+#             displayName: 'Log Error (if failed)'
+#             condition: failed()
+#             inputs:
+#               targetType: filePath
+#               filePath: $(scriptsDir)/log-error.ps1
+#               arguments: >-
+#                 -Stage "Bootstrap"
+#                 -BuildNumber "$(Build.BuildNumber)"
+#                 -RepoDir "$(projectDir)"
 
-# =============================================================================
-# Stage 2: Infra
-# =============================================================================
-  - stage: Infra
-    displayName: '2 - Provision Infrastructure'
-    dependsOn: Bootstrap
-    jobs:
-      - job: TerraformApply
-        displayName: 'Terraform Apply'
-        pool:
-          vmImage: ubuntu-latest
-        steps:
-          - checkout: self
-            persistCredentials: true
-          - checkout: app
+# # =============================================================================
+# # Stage 2: Infra
+# # =============================================================================
+#   - stage: Infra
+#     displayName: '2 - Provision Infrastructure'
+#     dependsOn: Bootstrap
+#     jobs:
+#       - job: TerraformApply
+#         displayName: 'Terraform Apply'
+#         pool:
+#           vmImage: ubuntu-latest
+#         steps:
+#           - checkout: self
+#             persistCredentials: true
+#           - checkout: app
 
-          - task: AzureCLI@2
-            displayName: 'Run infra.ps1 (apply)'
-            inputs:
-              azureSubscription: $(serviceConnection)
-              scriptType: pscore
-              scriptPath: $(scriptsDir)/infra.ps1
-              arguments: >-
-                -Action "apply"
-                -TerraformDir "$(tfDir)"
-                -VarFile "$(tfDir)/dev.tfvars"
-                -BackendRG "$(backendResourceGroup)"
-                -BackendSA "$(backendStorageAccount)"
-                -BackendContainer "$(backendContainer)"
-                -BackendKey "$(backendKey)"
-              addSpnToEnvironment: true
+#           - task: AzureCLI@2
+#             displayName: 'Run infra.ps1 (apply)'
+#             inputs:
+#               azureSubscription: $(serviceConnection)
+#               scriptType: pscore
+#               scriptPath: $(scriptsDir)/infra.ps1
+#               arguments: >-
+#                 -Action "apply"
+#                 -TerraformDir "$(tfDir)"
+#                 -VarFile "$(tfDir)/dev.tfvars"
+#                 -BackendRG "$(backendResourceGroup)"
+#                 -BackendSA "$(backendStorageAccount)"
+#                 -BackendContainer "$(backendContainer)"
+#                 -BackendKey "$(backendKey)"
+#               addSpnToEnvironment: true
 
-          - task: PowerShell@2
-            displayName: 'Log Error (if failed)'
-            condition: failed()
-            inputs:
-              targetType: filePath
-              filePath: $(scriptsDir)/log-error.ps1
-              arguments: >-
-                -Stage "Infra"
-                -BuildNumber "$(Build.BuildNumber)"
-                -RepoDir "$(projectDir)"
+#           - task: PowerShell@2
+#             displayName: 'Log Error (if failed)'
+#             condition: failed()
+#             inputs:
+#               targetType: filePath
+#               filePath: $(scriptsDir)/log-error.ps1
+#               arguments: >-
+#                 -Stage "Infra"
+#                 -BuildNumber "$(Build.BuildNumber)"
+#                 -RepoDir "$(projectDir)"
 
 # =============================================================================
 # Stage 3: Build
