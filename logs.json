@@ -1,4 +1,15 @@
 {
   "project": "atlas-03-helm-deployment",
-  "errors": []
+  "errors": [
+    {
+      "run": "#20261109.2",
+      "stage": "Infra",
+      "error": "Terraform plan failed",
+      "scriptLine": 61,
+      "timestamp": "2026-11-09T07:46:41Z",
+      "cause": "TODO",
+      "fix": "TODO",
+      "prevention": "TODO"
+    }
+  ]
 }
