@@ -75,6 +75,9 @@ try {
 
         $tfOutput = terraform apply -input=false tfplan 2>&1 | Out-String
         if ($LASTEXITCODE -ne 0) {
+            Write-Host "=== FULL TERRAFORM OUTPUT ===" -ForegroundColor Red
+            Write-Host $tfOutput -ForegroundColor Red
+            Write-Host "=== END ===" -ForegroundColor Red
             $tfError = ($tfOutput -split "`n" | Where-Object { $_ -match "Error:" }) -join "; "
             if (-not $tfError) { $tfError = ($tfOutput -split "`n" | Select-Object -Last 5) -join "; " }
             Pop-Location
