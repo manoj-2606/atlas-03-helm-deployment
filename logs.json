@@ -10,6 +10,16 @@
       "cause": "TODO",
       "fix": "TODO",
       "prevention": "TODO"
+    },
+    {
+      "run": "#20261109.3",
+      "stage": "Infra",
+      "error": "Terraform plan failed: │ Error: Failed to read variables file",
+      "scriptLine": 71,
+      "timestamp": "2026-11-09T07:56:40Z",
+      "cause": "TODO",
+      "fix": "TODO",
+      "prevention": "TODO"
     }
   ]
 }
