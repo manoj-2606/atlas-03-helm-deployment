@@ -46,7 +46,7 @@ try {
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  Init failed — state may not exist. Skipping destroy." -ForegroundColor Yellow
     } else {
-        terraform destroy -var-file=$VarFile -auto-approve -input=false
+        terraform destroy "-var-file=$VarFile" -auto-approve -input=false
         if ($LASTEXITCODE -ne 0) {
             Write-Host "  Terraform destroy had errors — will try manual RG delete" -ForegroundColor Yellow
         } else {
