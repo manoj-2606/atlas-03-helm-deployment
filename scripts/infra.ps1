@@ -55,14 +55,30 @@ try {
     # --- Terraform Plan/Apply ---
     Write-Host "[4/4] Terraform $Action..."
     if ($Action -eq "plan") {
-        terraform plan -var-file=$VarFile -input=false -out=tfplan
+        $tfOutput = terraform plan -var-file=$VarFile -input=false -out=tfplan 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) {
+            $tfError = ($tfOutput -split "`n" | Where-Object { $_ -match "Error:" }) -join "; "
+            if (-not $tfError) { $tfError = ($tfOutput -split "`n" | Select-Object -Last 5) -join "; " }
+            Pop-Location
+            throw "Terraform plan failed: $tfError"
+        }
     } else {
-        terraform plan -var-file=$VarFile -input=false -out=tfplan
-        if ($LASTEXITCODE -ne 0) { Pop-Location; throw "Terraform plan failed" }
-        terraform apply -input=false tfplan
-    }
+        $tfOutput = terraform plan -var-file=$VarFile -input=false -out=tfplan 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) {
+            $tfError = ($tfOutput -split "`n" | Where-Object { $_ -match "Error:" }) -join "; "
+            if (-not $tfError) { $tfError = ($tfOutput -split "`n" | Select-Object -Last 5) -join "; " }
+            Pop-Location
+            throw "Terraform plan failed: $tfError"
+        }
 
-    if ($LASTEXITCODE -ne 0) { Pop-Location; throw "Terraform $Action failed" }
+        $tfOutput = terraform apply -input=false tfplan 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) {
+            $tfError = ($tfOutput -split "`n" | Where-Object { $_ -match "Error:" }) -join "; "
+            if (-not $tfError) { $tfError = ($tfOutput -split "`n" | Select-Object -Last 5) -join "; " }
+            Pop-Location
+            throw "Terraform apply failed: $tfError"
+        }
+    }
 
     Write-Host "`n--- Terraform Outputs ---" -ForegroundColor Yellow
     terraform output -json
