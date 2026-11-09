@@ -50,6 +50,16 @@
       "cause": "TODO",
       "fix": "TODO",
       "prevention": "TODO"
+    },
+    {
+      "run": "#20261109.7",
+      "stage": "Build",
+      "error": "The term 'trivy' is not recognized as a name of a cmdlet, function, script file, or executable program.\nCheck the spelling of the name, or if a path was included, verify that the path is correct and try again.",
+      "scriptLine": 78,
+      "timestamp": "2026-11-09T13:32:21Z",
+      "cause": "TODO",
+      "fix": "TODO",
+      "prevention": "TODO"
     }
   ]
 }
